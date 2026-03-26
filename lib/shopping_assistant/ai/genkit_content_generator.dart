@@ -89,6 +89,32 @@ class GenkitContentGenerator implements ContentGenerator {
             return 'Surface $surfaceId deleted.';
           },
         );
+
+    // Define the shopping assistant flow. Flows are Genkit's core abstraction
+    // for named, observable, composable units of AI work.
+    _shoppingAssistantFlow =
+        _genkit.defineFlow<List<genkit.Message>, String, void, void>(
+          name: 'shoppingAssistantFlow',
+          fn: (messages, context) async {
+            final response = await _genkit.generate<GeminiOptions, void>(
+              model: googleAI.gemini('gemini-2.5-flash'),
+              config: GeminiOptions(
+                thinkingConfig: ThinkingConfig(
+                  thinkingBudget: 0,
+                  includeThoughts: false,
+                ),
+              ),
+              messages: messages,
+              tools: [
+                _surfaceUpdateTool,
+                _beginRenderingTool,
+                _deleteSurfaceTool,
+              ],
+              maxTurns: 30,
+            );
+            return response.text;
+          },
+        );
   }
 
   final Catalog _catalog;
@@ -97,6 +123,8 @@ class GenkitContentGenerator implements ContentGenerator {
   late final genkit.Tool<Map<String, dynamic>, String> _surfaceUpdateTool;
   late final genkit.Tool<Map<String, dynamic>, String> _beginRenderingTool;
   late final genkit.Tool<Map<String, dynamic>, String> _deleteSurfaceTool;
+  late final genkit.Flow<List<genkit.Message>, String, void, void>
+      _shoppingAssistantFlow;
 
   final _a2uiController = StreamController<A2uiMessage>.broadcast();
   final _textController = StreamController<String>.broadcast();
@@ -126,24 +154,11 @@ class GenkitContentGenerator implements ContentGenerator {
       // Build Genkit messages from GenUI conversation history.
       final messages = _buildMessages(message, history);
 
-      // Call Genkit generate with our tools. Genkit handles the tool-calling
-      // loop automatically — when the model emits a tool call, Genkit invokes
-      // our registered tool functions and feeds the results back.
-      final response = await _genkit.generate<GeminiOptions, void>(
-        model: googleAI.gemini('gemini-2.5-flash'),
-        config: GeminiOptions(
-          thinkingConfig: ThinkingConfig(
-            thinkingBudget: 0,
-            includeThoughts: false,
-          ),
-        ),
-        messages: messages,
-        tools: [_surfaceUpdateTool, _beginRenderingTool, _deleteSurfaceTool],
-        maxTurns: 30,
-      );
+      // Run the shopping assistant flow. The flow encapsulates the generate
+      // call with tools, making it a named, observable unit of AI work.
+      final text = await _shoppingAssistantFlow(messages);
 
       // Emit any remaining text that isn't part of a tool call.
-      final text = response.text;
       if (text.isNotEmpty) {
         _textController.add(text);
       }
