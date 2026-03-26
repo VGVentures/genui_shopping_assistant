@@ -31,7 +31,9 @@ class GenkitContentGenerator implements ContentGenerator {
   })  : _catalog = catalog,
         _systemInstruction = systemInstruction {
     const apiKey = String.fromEnvironment('GOOGLE_API_KEY');
-    _genkit = genkit.Genkit(plugins: [googleAI(apiKey: apiKey)]);
+    _genkit = genkit.Genkit(
+      plugins: [googleAI(apiKey: apiKey), genkit.RetryPlugin()],
+    );
 
     // Register GenUI tools with Genkit. These are the same tools that
     // genui_firebase_ai wires up behind the scenes — we just do it
@@ -371,6 +373,7 @@ class GenkitContentGenerator implements ContentGenerator {
       }
     } catch (e, st) {
       _log.severe('Generation error: $e', e, st);
+      debugPrint('GENKIT ERROR: $e');
       _errorController.add(ContentGeneratorError(e, st));
     } finally {
       _isProcessing.value = false;
