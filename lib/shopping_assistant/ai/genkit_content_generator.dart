@@ -7,6 +7,7 @@ import 'package:genkit_google_genai/genkit_google_genai.dart';
 import 'package:genui/genui.dart';
 import 'package:genui_shopping_assistant/shopping_assistant/catalog/shopping_catalog.dart';
 import 'package:genui_shopping_assistant/shopping_assistant/data/product_data.dart';
+import 'package:genui_shopping_assistant/shopping_assistant/data/shopping_context.dart';
 import 'package:genui_shopping_assistant/shopping_assistant/prompt/shopping_prompt.dart';
 import 'package:json_schema_builder/json_schema_builder.dart' as jsb;
 import 'package:logging/logging.dart';
@@ -136,7 +137,15 @@ class GenkitContentGenerator implements ContentGenerator {
               category: category,
               maxResults: maxResults,
             );
-            final json = results.map((p) => p.toJson()).toList();
+            // Annotate each result with cart status so the model knows what
+            // the user already has.
+            final json = results.map((p) {
+              final map = p.toJson();
+              if (_shoppingContext.isInCart(p.name)) {
+                map['inCart'] = true;
+              }
+              return map;
+            }).toList();
             return jsonEncode(json);
           },
         );
@@ -299,6 +308,7 @@ class GenkitContentGenerator implements ContentGenerator {
 
   final Catalog _catalog;
   final String _systemInstruction;
+  final ShoppingContext _shoppingContext = ShoppingContext();
   late final genkit.Genkit _genkit;
   late final genkit.Tool<Map<String, dynamic>, String> _surfaceUpdateTool;
   late final genkit.Tool<Map<String, dynamic>, String> _beginRenderingTool;
@@ -334,6 +344,11 @@ class GenkitContentGenerator implements ContentGenerator {
   }) async {
     _isProcessing.value = true;
     try {
+      // Update the shopping context with cart events and user preferences
+      // so subsequent generations can personalize responses.
+      _trackCartEvent(message);
+      _trackPreferences(message);
+
       // Build Genkit messages from GenUI conversation history.
       final messages = _buildMessages(message, history);
 
@@ -422,6 +437,51 @@ class GenkitContentGenerator implements ContentGenerator {
     }
   }
 
+  /// Extracts budget or category preferences from user text messages.
+  void _trackPreferences(ChatMessage message) {
+    if (message is! UserMessage) return;
+    final text = message.text.toLowerCase();
+    // Detect budget mentions like "under $100" or "budget is $50".
+    final budgetMatch =
+        RegExp(r'(?:under|budget[^$]*|less than)\s*\$(\d+)').firstMatch(text);
+    if (budgetMatch != null) {
+      _shoppingContext.setPreference('budget', '\$${budgetMatch.group(1)}');
+    }
+    // Detect category preferences.
+    const categories = ['running shoes', 'accessories', 'apparel', 'electronics'];
+    for (final cat in categories) {
+      if (text.contains(cat)) {
+        _shoppingContext.setPreference('preferredCategory', cat);
+        break;
+      }
+    }
+  }
+
+  /// Extracts addToCart events from user interaction messages and updates
+  /// the [_shoppingContext] so the model and tools can see what's in the cart.
+  void _trackCartEvent(ChatMessage message) {
+    if (message is! UserUiInteractionMessage) return;
+    final text = message.text;
+    // The interaction message text contains the event description.
+    // Look for addToCart mentions and try to extract the product details.
+    if (!text.toLowerCase().contains('addtocart')) return;
+    try {
+      // GenUI formats the event context as JSON within the message.
+      final match = RegExp(r'\{[^}]*productName[^}]*\}').firstMatch(text);
+      if (match != null) {
+        final data = jsonDecode(match.group(0)!) as Map<String, dynamic>;
+        final name = data['productName'] as String?;
+        final price = (data['price'] as num?)?.toDouble();
+        if (name != null && price != null) {
+          _shoppingContext.addToCart(name, price);
+          _log.info('Cart updated: added $name (\$$price)');
+        }
+      }
+    } catch (e) {
+      _log.fine('Could not parse cart event: $e');
+    }
+  }
+
   /// Converts GenUI [ChatMessage] history into Genkit [genkit.Message] list.
   List<genkit.Message> _buildMessages(
     ChatMessage current,
@@ -429,12 +489,14 @@ class GenkitContentGenerator implements ContentGenerator {
   ) {
     final messages = <genkit.Message>[];
 
-    // System message with catalog schema and instructions.
+    // System message with catalog schema, instructions, and current context.
     final catalogSchema = _catalog.definition;
+    final contextSummary = _shoppingContext.toPromptSummary();
     final systemPrompt = '$_systemInstruction\n\n'
         '${genUiTechPrompt(['surfaceUpdate', 'beginRendering', 'deleteSurface'])}\n\n'
         '## Available UI Components\n\n'
-        '${jsonEncode(catalogSchema.value)}';
+        '${jsonEncode(catalogSchema.value)}'
+        '${contextSummary.isNotEmpty ? '\n\n$contextSummary' : ''}';
     messages.add(genkit.Message(
       role: genkit.Role.system,
       content: [genkit.TextPart(text: systemPrompt)],
