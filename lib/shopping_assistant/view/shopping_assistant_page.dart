@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:genui/genui.dart';
-import 'package:genui_shopping_assistant/shopping_assistant/ai/firebase_ai_transport.dart';
+import 'package:genui_shopping_assistant/shopping_assistant/ai/genkit_content_generator.dart';
 import 'package:genui_shopping_assistant/shopping_assistant/catalog/shopping_catalog.dart';
 import 'package:genui_shopping_assistant/shopping_assistant/view/widgets/chat_input_bar.dart';
 import 'package:genui_shopping_assistant/shopping_assistant/view/widgets/message_bubble.dart';
@@ -52,8 +52,8 @@ class _ShoppingAssistantPageState extends State<ShoppingAssistantPage> {
   void initState() {
     super.initState();
 
-    // 1. Build the Firebase AI content generator (Gemini streaming).
-    _contentGenerator = buildFirebaseAiContentGenerator();
+    // 1. Build the Genkit content generator (Gemini via Google AI).
+    _contentGenerator = buildGenkitContentGenerator();
 
     // 2. Create the A2uiMessageProcessor — the runtime engine that manages
     //    every GenUI surface (AI-composed widget tree) in this session.
