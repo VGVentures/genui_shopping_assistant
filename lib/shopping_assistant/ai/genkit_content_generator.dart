@@ -111,6 +111,19 @@ class GenkitContentGenerator implements ContentGenerator {
                 _deleteSurfaceTool,
               ],
               maxTurns: 30,
+              use: [
+                genkit.retry(
+                  maxRetries: 3,
+                  initialDelayMs: 500,
+                  maxDelayMs: 5000,
+                  backoffFactor: 2,
+                  statuses: [
+                    genkit.StatusCodes.UNAVAILABLE,
+                    genkit.StatusCodes.RESOURCE_EXHAUSTED,
+                    genkit.StatusCodes.DEADLINE_EXCEEDED,
+                  ],
+                ),
+              ],
             );
             return response.text;
           },
