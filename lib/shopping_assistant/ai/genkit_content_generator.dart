@@ -371,8 +371,6 @@ class GenkitContentGenerator implements ContentGenerator {
       }
     } catch (e, st) {
       _log.severe('Generation error: $e', e, st);
-      debugPrint('GENKIT ERROR: $e');
-      debugPrint('GENKIT STACK: $st');
       _errorController.add(ContentGeneratorError(e, st));
     } finally {
       _isProcessing.value = false;
