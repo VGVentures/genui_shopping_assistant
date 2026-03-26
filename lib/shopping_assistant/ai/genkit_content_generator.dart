@@ -141,6 +141,121 @@ class GenkitContentGenerator implements ContentGenerator {
           },
         );
 
+    // Define a quick-recommendation flow that uses structured output.
+    // Instead of parsing free-form text, outputSchema guarantees the model
+    // returns JSON conforming to our ProductRecommendation schema.
+    _quickRecommendationFlow =
+        _genkit.defineFlow<String, List<Map<String, dynamic>>, void, void>(
+          name: 'quickRecommendationFlow',
+          outputSchema: SchemanticType.from<List<Map<String, dynamic>>>(
+            jsonSchema: {
+              'type': 'array',
+              'items': {
+                'type': 'object',
+                'properties': {
+                  'productName': {
+                    'type': 'string',
+                    'description': 'Name of the recommended product.',
+                  },
+                  'reason': {
+                    'type': 'string',
+                    'description':
+                        'One-sentence reason why this product is recommended.',
+                  },
+                  'category': {
+                    'type': 'string',
+                    'description': 'Product category.',
+                  },
+                  'priceRange': {
+                    'type': 'string',
+                    'description':
+                        'Approximate price range, e.g. "\$50-\$100".',
+                  },
+                },
+                'required': ['productName', 'reason', 'category'],
+              },
+            },
+            parse: (json) => (json as List<dynamic>)
+                .cast<Map<String, dynamic>>(),
+          ),
+          fn: (userQuery, context) async {
+            final response = await _genkit.generate<GeminiOptions,
+                List<Map<String, dynamic>>>(
+              model: googleAI.gemini('gemini-2.5-flash'),
+              config: GeminiOptions(
+                thinkingConfig: ThinkingConfig(
+                  thinkingBudget: 0,
+                  includeThoughts: false,
+                ),
+              ),
+              messages: [
+                genkit.Message(
+                  role: genkit.Role.system,
+                  content: [
+                    genkit.TextPart(
+                      text:
+                          'You are a shopping assistant. Given the user\'s '
+                          'request, recommend 3-5 products from these '
+                          'categories: running shoes, accessories, apparel, '
+                          'electronics. Return ONLY the JSON array — no '
+                          'markdown, no extra text.',
+                    ),
+                  ],
+                ),
+                genkit.Message(
+                  role: genkit.Role.user,
+                  content: [genkit.TextPart(text: userQuery)],
+                ),
+              ],
+              outputSchema: SchemanticType.from<List<Map<String, dynamic>>>(
+                jsonSchema: {
+                  'type': 'array',
+                  'items': {
+                    'type': 'object',
+                    'properties': {
+                      'productName': {
+                        'type': 'string',
+                        'description': 'Name of the recommended product.',
+                      },
+                      'reason': {
+                        'type': 'string',
+                        'description':
+                            'One-sentence reason why this is recommended.',
+                      },
+                      'category': {
+                        'type': 'string',
+                        'description': 'Product category.',
+                      },
+                      'priceRange': {
+                        'type': 'string',
+                        'description':
+                            'Approximate price range, e.g. "\$50-\$100".',
+                      },
+                    },
+                    'required': ['productName', 'reason', 'category'],
+                  },
+                },
+                parse: (json) => (json as List<dynamic>)
+                    .cast<Map<String, dynamic>>(),
+              ),
+              use: [
+                genkit.retry(
+                  maxRetries: 3,
+                  initialDelayMs: 500,
+                  maxDelayMs: 5000,
+                  backoffFactor: 2,
+                  statuses: [
+                    genkit.StatusCodes.UNAVAILABLE,
+                    genkit.StatusCodes.RESOURCE_EXHAUSTED,
+                    genkit.StatusCodes.DEADLINE_EXCEEDED,
+                  ],
+                ),
+              ],
+            );
+            return response.output!;
+          },
+        );
+
     // Define the shopping assistant flow. Flows are Genkit's core abstraction
     // for named, observable, composable units of AI work.
     _shoppingAssistantFlow =
@@ -189,6 +304,8 @@ class GenkitContentGenerator implements ContentGenerator {
   late final genkit.Tool<Map<String, dynamic>, String> _beginRenderingTool;
   late final genkit.Tool<Map<String, dynamic>, String> _deleteSurfaceTool;
   late final genkit.Tool<Map<String, dynamic>, String> _searchProductsTool;
+  late final genkit.Flow<String, List<Map<String, dynamic>>, void, void>
+      _quickRecommendationFlow;
   late final genkit.Flow<List<genkit.Message>, String, void, void>
       _shoppingAssistantFlow;
 
@@ -220,6 +337,15 @@ class GenkitContentGenerator implements ContentGenerator {
       // Build Genkit messages from GenUI conversation history.
       final messages = _buildMessages(message, history);
 
+      // Check if this looks like a recommendation request. If so, use the
+      // structured output flow to get typed recommendations first, then
+      // feed them into the main flow so it can render product cards.
+      final userText = (message is UserMessage) ? message.text : '';
+      if (_isRecommendationQuery(userText)) {
+        await _handleRecommendationQuery(userText, messages);
+        return;
+      }
+
       // Run the shopping assistant flow. The flow encapsulates the generate
       // call with tools, making it a named, observable unit of AI work.
       final text = await _shoppingAssistantFlow(messages);
@@ -244,6 +370,56 @@ class GenkitContentGenerator implements ContentGenerator {
     _textController.close();
     _errorController.close();
     _isProcessing.dispose();
+  }
+
+  /// Returns `true` if the user's message looks like a recommendation request.
+  bool _isRecommendationQuery(String text) {
+    final lower = text.toLowerCase();
+    const triggers = [
+      'what should i buy',
+      'recommend',
+      'suggestion',
+      'what do you suggest',
+      'help me choose',
+      'best picks',
+      'top picks',
+      'what\'s good',
+      'whats good',
+    ];
+    return triggers.any(lower.contains);
+  }
+
+  /// Uses the structured output flow to get typed recommendations, then
+  /// feeds them into the main shopping assistant flow for UI rendering.
+  Future<void> _handleRecommendationQuery(
+    String userText,
+    List<genkit.Message> messages,
+  ) async {
+    // Get structured recommendations via outputSchema — guaranteed JSON.
+    final recommendations = await _quickRecommendationFlow(userText);
+    _log.info(
+      'Structured recommendations: ${jsonEncode(recommendations)}',
+    );
+
+    // Inject the structured recommendations into the conversation so the
+    // main flow can render them as product cards.
+    messages.add(genkit.Message(
+      role: genkit.Role.user,
+      content: [
+        genkit.TextPart(
+          text: 'Here are structured product recommendations I got. '
+              'Please search for these products and display them as a '
+              'ProductCarousel. For each recommendation, include the '
+              'reason it was recommended.\n\n'
+              '${jsonEncode(recommendations)}',
+        ),
+      ],
+    ));
+
+    final text = await _shoppingAssistantFlow(messages);
+    if (text.isNotEmpty) {
+      _textController.add(text);
+    }
   }
 
   /// Converts GenUI [ChatMessage] history into Genkit [genkit.Message] list.
