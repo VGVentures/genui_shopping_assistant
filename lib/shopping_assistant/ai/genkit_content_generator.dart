@@ -6,6 +6,7 @@ import 'package:genkit/genkit.dart' as genkit;
 import 'package:genkit_google_genai/genkit_google_genai.dart';
 import 'package:genui/genui.dart';
 import 'package:genui_shopping_assistant/shopping_assistant/catalog/shopping_catalog.dart';
+import 'package:genui_shopping_assistant/shopping_assistant/data/product_data.dart';
 import 'package:genui_shopping_assistant/shopping_assistant/prompt/shopping_prompt.dart';
 import 'package:json_schema_builder/json_schema_builder.dart' as jsb;
 import 'package:logging/logging.dart';
@@ -90,6 +91,56 @@ class GenkitContentGenerator implements ContentGenerator {
           },
         );
 
+    // Define a searchProducts tool so the model can look up products from
+    // the inventory by query, category, and result limit.
+    _searchProductsTool =
+        _genkit.defineTool<Map<String, dynamic>, String>(
+          name: 'searchProducts',
+          description:
+              'Searches the product inventory by keyword query. Returns '
+              'matching products with name, price, description, category, '
+              'brand, and rating. Use this to find products before rendering '
+              'them with surfaceUpdate/beginRendering.',
+          inputSchema: SchemanticType.from<Map<String, dynamic>>(
+            jsonSchema: {
+              'type': 'object',
+              'properties': {
+                'query': {
+                  'type': 'string',
+                  'description':
+                      'Search query — matches product name, description, '
+                      'category, or brand.',
+                },
+                'category': {
+                  'type': 'string',
+                  'description':
+                      'Optional category filter (e.g., "running shoes", '
+                      '"accessories", "apparel", "electronics").',
+                },
+                'maxResults': {
+                  'type': 'integer',
+                  'description':
+                      'Maximum number of results to return. Defaults to 5.',
+                },
+              },
+              'required': ['query'],
+            },
+            parse: (json) => json as Map<String, dynamic>,
+          ),
+          fn: (input, _) async {
+            final query = input['query'] as String;
+            final category = input['category'] as String?;
+            final maxResults = (input['maxResults'] as num?)?.toInt() ?? 5;
+            final results = searchProducts(
+              query: query,
+              category: category,
+              maxResults: maxResults,
+            );
+            final json = results.map((p) => p.toJson()).toList();
+            return jsonEncode(json);
+          },
+        );
+
     // Define the shopping assistant flow. Flows are Genkit's core abstraction
     // for named, observable, composable units of AI work.
     _shoppingAssistantFlow =
@@ -109,6 +160,7 @@ class GenkitContentGenerator implements ContentGenerator {
                 _surfaceUpdateTool,
                 _beginRenderingTool,
                 _deleteSurfaceTool,
+                _searchProductsTool,
               ],
               maxTurns: 30,
               use: [
@@ -136,6 +188,7 @@ class GenkitContentGenerator implements ContentGenerator {
   late final genkit.Tool<Map<String, dynamic>, String> _surfaceUpdateTool;
   late final genkit.Tool<Map<String, dynamic>, String> _beginRenderingTool;
   late final genkit.Tool<Map<String, dynamic>, String> _deleteSurfaceTool;
+  late final genkit.Tool<Map<String, dynamic>, String> _searchProductsTool;
   late final genkit.Flow<List<genkit.Message>, String, void, void>
       _shoppingAssistantFlow;
 
