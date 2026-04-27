@@ -6,9 +6,9 @@ import 'package:genkit/genkit.dart' as genkit;
 import 'package:genkit_google_genai/genkit_google_genai.dart';
 import 'package:genui/genui.dart';
 import 'package:genui_shopping_assistant/shopping_assistant/catalog/shopping_catalog.dart';
-import 'package:genui_shopping_assistant/shopping_assistant/data/product_data.dart';
 import 'package:genui_shopping_assistant/shopping_assistant/data/shopping_context.dart';
 import 'package:genui_shopping_assistant/shopping_assistant/prompt/shopping_prompt.dart';
+import 'package:http/http.dart' as http;
 import 'package:json_schema_builder/json_schema_builder.dart' as jsb;
 import 'package:logging/logging.dart';
 import 'package:schemantic/schemantic.dart';
@@ -131,24 +131,25 @@ class GenkitContentGenerator implements ContentGenerator {
             parse: (json) => json as Map<String, dynamic>,
           ),
           fn: (input, _) async {
-            final query = input['query'] as String;
-            final category = input['category'] as String?;
-            final maxResults = (input['maxResults'] as num?)?.toInt() ?? 5;
-            final results = searchProducts(
-              query: query,
-              category: category,
-              maxResults: maxResults,
+            // Call the backend server instead of searching locally.
+            final uri = Uri.parse('http://localhost:3400/searchProductsFlow');
+            final cartItems = _shoppingContext.cartItems.map((i) => i.productName).toList();
+            
+            final response = await http.post(
+              uri,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'data': {
+                  'query': input['query'],
+                  if (input['category'] != null) 'category': input['category'],
+                  if (input['maxResults'] != null) 'maxResults': input['maxResults'],
+                  'cartItems': cartItems,
+                }
+              }),
             );
-            // Annotate each result with cart status so the model knows what
-            // the user already has.
-            final json = results.map((p) {
-              final map = p.toJson();
-              if (_shoppingContext.isInCart(p.name)) {
-                map['inCart'] = true;
-              }
-              return map;
-            }).toList();
-            return jsonEncode(json);
+            
+            final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+            return decoded['result'] as String;
           },
         );
 
