@@ -39,126 +39,186 @@ class GenkitContentGenerator implements ContentGenerator {
     // genui_firebase_ai wires up behind the scenes — we just do it
     // explicitly now. Each tool needs an inputSchema so the model knows
     // what parameters to pass.
-    SchemanticType<Map<String, dynamic>> _mapSchema(jsb.Schema schema) {
+    SchemanticType<Map<String, dynamic>> mapSchema(jsb.Schema schema) {
       // Schema is an extension type over Map<String, Object?>.
       // Round-trip through JSON to extract the underlying map.
-      final jsonSchema =
-          jsonDecode(jsonEncode(schema)) as Map<String, Object?>;
+      final jsonSchema = jsonDecode(jsonEncode(schema)) as Map<String, Object?>;
       return SchemanticType.from<Map<String, dynamic>>(
         jsonSchema: jsonSchema,
         parse: (json) => json as Map<String, dynamic>,
       );
     }
 
-    _surfaceUpdateTool =
-        _genkit.defineTool<Map<String, dynamic>, String>(
-          name: 'surfaceUpdate',
-          description: 'Updates a surface with a new set of components.',
-          inputSchema: _mapSchema(
-            A2uiSchemas.surfaceUpdateSchema(catalog),
-          ),
-          fn: (input, _) async {
-            _handleSurfaceUpdate(input);
-            final surfaceId = input[surfaceIdKey] as String;
-            return 'UI Surface $surfaceId updated.';
-          },
-        );
+    _surfaceUpdateTool = _genkit.defineTool<Map<String, dynamic>, String>(
+      name: 'surfaceUpdate',
+      description: 'Updates a surface with a new set of components.',
+      inputSchema: mapSchema(
+        A2uiSchemas.surfaceUpdateSchema(catalog),
+      ),
+      fn: (input, _) async {
+        _handleSurfaceUpdate(input);
+        final surfaceId = input[surfaceIdKey] as String;
+        return 'UI Surface $surfaceId updated.';
+      },
+    );
 
-    _beginRenderingTool =
-        _genkit.defineTool<Map<String, dynamic>, String>(
-          name: 'beginRendering',
-          description:
-              'Signals the client to begin rendering a surface with a root '
-              'component.',
-          inputSchema: _mapSchema(
-            A2uiSchemas.beginRenderingSchemaNoCatalogId(),
-          ),
-          fn: (input, _) async {
-            _handleBeginRendering(input);
-            final surfaceId = input[surfaceIdKey] as String;
-            return 'Surface $surfaceId rendered and waiting for user input.';
-          },
-        );
+    _beginRenderingTool = _genkit.defineTool<Map<String, dynamic>, String>(
+      name: 'beginRendering',
+      description:
+          'Signals the client to begin rendering a surface with a root '
+          'component.',
+      inputSchema: mapSchema(
+        A2uiSchemas.beginRenderingSchemaNoCatalogId(),
+      ),
+      fn: (input, _) async {
+        _handleBeginRendering(input);
+        final surfaceId = input[surfaceIdKey] as String;
+        return 'Surface $surfaceId rendered and waiting for user input.';
+      },
+    );
 
-    _deleteSurfaceTool =
-        _genkit.defineTool<Map<String, dynamic>, String>(
-          name: 'deleteSurface',
-          description: 'Removes a UI surface that is no longer needed.',
-          inputSchema: _mapSchema(
-            A2uiSchemas.surfaceDeletionSchema(),
-          ),
-          fn: (input, _) async {
-            final surfaceId = input[surfaceIdKey] as String;
-            _a2uiController.add(SurfaceDeletion(surfaceId: surfaceId));
-            return 'Surface $surfaceId deleted.';
-          },
-        );
+    _deleteSurfaceTool = _genkit.defineTool<Map<String, dynamic>, String>(
+      name: 'deleteSurface',
+      description: 'Removes a UI surface that is no longer needed.',
+      inputSchema: mapSchema(
+        A2uiSchemas.surfaceDeletionSchema(),
+      ),
+      fn: (input, _) async {
+        final surfaceId = input[surfaceIdKey] as String;
+        _a2uiController.add(SurfaceDeletion(surfaceId: surfaceId));
+        return 'Surface $surfaceId deleted.';
+      },
+    );
 
     // Define a searchProducts tool so the model can look up products from
     // the inventory by query, category, and result limit.
-    _searchProductsTool =
-        _genkit.defineTool<Map<String, dynamic>, String>(
-          name: 'searchProducts',
-          description:
-              'Searches the product inventory by keyword query. Returns '
-              'matching products with name, price, description, category, '
-              'brand, and rating. Use this to find products before rendering '
-              'them with surfaceUpdate/beginRendering.',
-          inputSchema: SchemanticType.from<Map<String, dynamic>>(
-            jsonSchema: {
-              'type': 'object',
-              'properties': {
-                'query': {
-                  'type': 'string',
-                  'description':
-                      'Search query — matches product name, description, '
+    _searchProductsTool = _genkit.defineTool<Map<String, dynamic>, String>(
+      name: 'searchProducts',
+      description: 'Searches the product inventory by keyword query. Returns '
+          'matching products with name, price, description, category, '
+          'brand, and rating. Use this to find products before rendering '
+          'them with surfaceUpdate/beginRendering.',
+      inputSchema: SchemanticType.from<Map<String, dynamic>>(
+        jsonSchema: {
+          'type': 'object',
+          'properties': {
+            'query': {
+              'type': 'string',
+              'description':
+                  'Search query — matches product name, description, '
                       'category, or brand.',
-                },
-                'category': {
-                  'type': 'string',
-                  'description':
-                      'Optional category filter (e.g., "running shoes", '
-                      '"accessories", "apparel", "electronics").',
-                },
-                'maxResults': {
-                  'type': 'integer',
-                  'description':
-                      'Maximum number of results to return. Defaults to 5.',
-                },
-              },
-              'required': ['query'],
             },
-            parse: (json) => json as Map<String, dynamic>,
-          ),
-          fn: (input, _) async {
-            // Call the backend server instead of searching locally.
-            final uri = Uri.parse('http://localhost:3400/searchProductsFlow');
-            final cartItems = _shoppingContext.cartItems.map((i) => i.productName).toList();
-            
-            final response = await http.post(
-              uri,
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({
-                'data': {
-                  'query': input['query'],
-                  if (input['category'] != null) 'category': input['category'],
-                  if (input['maxResults'] != null) 'maxResults': input['maxResults'],
-                  'cartItems': cartItems,
-                }
-              }),
-            );
-            
-            final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-            return decoded['result'] as String;
+            'category': {
+              'type': 'string',
+              'description': 'Optional category filter (e.g., "running shoes", '
+                  '"accessories", "apparel", "electronics").',
+            },
+            'maxResults': {
+              'type': 'integer',
+              'description':
+                  'Maximum number of results to return. Defaults to 5.',
+            },
           },
+          'required': ['query'],
+        },
+        parse: (json) => json as Map<String, dynamic>,
+      ),
+      fn: (input, _) async {
+        // Call the backend server instead of searching locally.
+        const backendUrl = String.fromEnvironment(
+          'BACKEND_URL',
+          defaultValue: 'http://localhost:3400',
         );
+        final uri = Uri.parse('$backendUrl/searchProductsFlow');
+        final cartItems =
+            _shoppingContext.cartItems.map((i) => i.productName).toList();
+
+        final response = await http.post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'data': {
+              'query': input['query'],
+              if (input['category'] != null) 'category': input['category'],
+              if (input['maxResults'] != null)
+                'maxResults': input['maxResults'],
+              'cartItems': cartItems,
+            }
+          }),
+        );
+
+        if (response.statusCode != 200) {
+          throw Exception(
+              'Backend error: ${response.statusCode} ${response.body}');
+        }
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        return decoded['result'] as String;
+      },
+    );
 
     // Define a quick-recommendation flow that uses structured output.
     // Instead of parsing free-form text, outputSchema guarantees the model
     // returns JSON conforming to our ProductRecommendation schema.
     _quickRecommendationFlow =
         _genkit.defineFlow<String, List<Map<String, dynamic>>, void, void>(
-          name: 'quickRecommendationFlow',
+      name: 'quickRecommendationFlow',
+      outputSchema: SchemanticType.from<List<Map<String, dynamic>>>(
+        jsonSchema: {
+          'type': 'array',
+          'items': {
+            'type': 'object',
+            'properties': {
+              'productName': {
+                'type': 'string',
+                'description': 'Name of the recommended product.',
+              },
+              'reason': {
+                'type': 'string',
+                'description':
+                    'One-sentence reason why this product is recommended.',
+              },
+              'category': {
+                'type': 'string',
+                'description': 'Product category.',
+              },
+              'priceRange': {
+                'type': 'string',
+                'description': 'Approximate price range, e.g. "\$50-\$100".',
+              },
+            },
+            'required': ['productName', 'reason', 'category'],
+          },
+        },
+        parse: (json) => (json as List<dynamic>).cast<Map<String, dynamic>>(),
+      ),
+      fn: (userQuery, context) async {
+        final response =
+            await _genkit.generate<GeminiOptions, List<Map<String, dynamic>>>(
+          model: googleAI.gemini('gemini-2.5-flash'),
+          config: GeminiOptions(
+            thinkingConfig: ThinkingConfig(
+              thinkingBudget: 0,
+              includeThoughts: false,
+            ),
+          ),
+          messages: [
+            genkit.Message(
+              role: genkit.Role.system,
+              content: [
+                genkit.TextPart(
+                  text: 'You are a shopping assistant. Given the user\'s '
+                      'request, recommend 3-5 products from these '
+                      'categories: running shoes, accessories, apparel, '
+                      'electronics. Return ONLY the JSON array — no '
+                      'markdown, no extra text.',
+                ),
+              ],
+            ),
+            genkit.Message(
+              role: genkit.Role.user,
+              content: [genkit.TextPart(text: userQuery)],
+            ),
+          ],
           outputSchema: SchemanticType.from<List<Map<String, dynamic>>>(
             jsonSchema: {
               'type': 'array',
@@ -172,7 +232,7 @@ class GenkitContentGenerator implements ContentGenerator {
                   'reason': {
                     'type': 'string',
                     'description':
-                        'One-sentence reason why this product is recommended.',
+                        'One-sentence reason why this is recommended.',
                   },
                   'category': {
                     'type': 'string',
@@ -187,126 +247,68 @@ class GenkitContentGenerator implements ContentGenerator {
                 'required': ['productName', 'reason', 'category'],
               },
             },
-            parse: (json) => (json as List<dynamic>)
-                .cast<Map<String, dynamic>>(),
+            parse: (json) =>
+                (json as List<dynamic>).cast<Map<String, dynamic>>(),
           ),
-          fn: (userQuery, context) async {
-            final response = await _genkit.generate<GeminiOptions,
-                List<Map<String, dynamic>>>(
-              model: googleAI.gemini('gemini-2.5-flash'),
-              config: GeminiOptions(
-                thinkingConfig: ThinkingConfig(
-                  thinkingBudget: 0,
-                  includeThoughts: false,
-                ),
-              ),
-              messages: [
-                genkit.Message(
-                  role: genkit.Role.system,
-                  content: [
-                    genkit.TextPart(
-                      text:
-                          'You are a shopping assistant. Given the user\'s '
-                          'request, recommend 3-5 products from these '
-                          'categories: running shoes, accessories, apparel, '
-                          'electronics. Return ONLY the JSON array — no '
-                          'markdown, no extra text.',
-                    ),
-                  ],
-                ),
-                genkit.Message(
-                  role: genkit.Role.user,
-                  content: [genkit.TextPart(text: userQuery)],
-                ),
+          use: [
+            genkit.retry(
+              maxRetries: 3,
+              initialDelayMs: 500,
+              maxDelayMs: 5000,
+              backoffFactor: 2,
+              statuses: [
+                genkit.StatusCodes.UNAVAILABLE,
+                genkit.StatusCodes.RESOURCE_EXHAUSTED,
+                genkit.StatusCodes.DEADLINE_EXCEEDED,
               ],
-              outputSchema: SchemanticType.from<List<Map<String, dynamic>>>(
-                jsonSchema: {
-                  'type': 'array',
-                  'items': {
-                    'type': 'object',
-                    'properties': {
-                      'productName': {
-                        'type': 'string',
-                        'description': 'Name of the recommended product.',
-                      },
-                      'reason': {
-                        'type': 'string',
-                        'description':
-                            'One-sentence reason why this is recommended.',
-                      },
-                      'category': {
-                        'type': 'string',
-                        'description': 'Product category.',
-                      },
-                      'priceRange': {
-                        'type': 'string',
-                        'description':
-                            'Approximate price range, e.g. "\$50-\$100".',
-                      },
-                    },
-                    'required': ['productName', 'reason', 'category'],
-                  },
-                },
-                parse: (json) => (json as List<dynamic>)
-                    .cast<Map<String, dynamic>>(),
-              ),
-              use: [
-                genkit.retry(
-                  maxRetries: 3,
-                  initialDelayMs: 500,
-                  maxDelayMs: 5000,
-                  backoffFactor: 2,
-                  statuses: [
-                    genkit.StatusCodes.UNAVAILABLE,
-                    genkit.StatusCodes.RESOURCE_EXHAUSTED,
-                    genkit.StatusCodes.DEADLINE_EXCEEDED,
-                  ],
-                ),
-              ],
-            );
-            return response.output!;
-          },
+            ),
+          ],
         );
+        final output = response.output;
+        if (output == null) return [];
+        return output;
+      },
+    );
 
     // Define the shopping assistant flow. Flows are Genkit's core abstraction
     // for named, observable, composable units of AI work.
     _shoppingAssistantFlow =
         _genkit.defineFlow<List<genkit.Message>, String, void, void>(
-          name: 'shoppingAssistantFlow',
-          fn: (messages, context) async {
-            final response = await _genkit.generate<GeminiOptions, void>(
-              model: googleAI.gemini('gemini-2.5-flash'),
-              config: GeminiOptions(
-                thinkingConfig: ThinkingConfig(
-                  thinkingBudget: 0,
-                  includeThoughts: false,
-                ),
-              ),
-              messages: messages,
-              tools: [
-                _surfaceUpdateTool,
-                _beginRenderingTool,
-                _deleteSurfaceTool,
-                _searchProductsTool,
+      name: 'shoppingAssistantFlow',
+      fn: (messages, context) async {
+        final response = await _genkit.generate<GeminiOptions, void>(
+          model: googleAI.gemini('gemini-2.5-flash'),
+          config: GeminiOptions(
+            thinkingConfig: ThinkingConfig(
+              thinkingBudget: 0,
+              includeThoughts: false,
+            ),
+          ),
+          messages: messages,
+          tools: [
+            _surfaceUpdateTool,
+            _beginRenderingTool,
+            _deleteSurfaceTool,
+            _searchProductsTool,
+          ],
+          maxTurns: 30,
+          use: [
+            genkit.retry(
+              maxRetries: 3,
+              initialDelayMs: 500,
+              maxDelayMs: 5000,
+              backoffFactor: 2,
+              statuses: [
+                genkit.StatusCodes.UNAVAILABLE,
+                genkit.StatusCodes.RESOURCE_EXHAUSTED,
+                genkit.StatusCodes.DEADLINE_EXCEEDED,
               ],
-              maxTurns: 30,
-              use: [
-                genkit.retry(
-                  maxRetries: 3,
-                  initialDelayMs: 500,
-                  maxDelayMs: 5000,
-                  backoffFactor: 2,
-                  statuses: [
-                    genkit.StatusCodes.UNAVAILABLE,
-                    genkit.StatusCodes.RESOURCE_EXHAUSTED,
-                    genkit.StatusCodes.DEADLINE_EXCEEDED,
-                  ],
-                ),
-              ],
-            );
-            return response.text;
-          },
+            ),
+          ],
         );
+        return response.text;
+      },
+    );
   }
 
   final Catalog _catalog;
@@ -450,7 +452,12 @@ class GenkitContentGenerator implements ContentGenerator {
       _shoppingContext.setPreference('budget', '\$${budgetMatch.group(1)}');
     }
     // Detect category preferences.
-    const categories = ['running shoes', 'accessories', 'apparel', 'electronics'];
+    const categories = [
+      'running shoes',
+      'accessories',
+      'apparel',
+      'electronics'
+    ];
     for (final cat in categories) {
       if (text.contains(cat)) {
         _shoppingContext.setPreference('preferredCategory', cat);
@@ -495,7 +502,11 @@ class GenkitContentGenerator implements ContentGenerator {
     final catalogSchema = _catalog.definition;
     final contextSummary = _shoppingContext.toPromptSummary();
     final systemPrompt = '$_systemInstruction\n\n'
-        '${genUiTechPrompt(['surfaceUpdate', 'beginRendering', 'deleteSurface'])}\n\n'
+        '${genUiTechPrompt([
+          'surfaceUpdate',
+          'beginRendering',
+          'deleteSurface'
+        ])}\n\n'
         '## Available UI Components\n\n'
         '${jsonEncode(catalogSchema.value)}'
         '${contextSummary.isNotEmpty ? '\n\n$contextSummary' : ''}';
@@ -538,10 +549,7 @@ class GenkitContentGenerator implements ContentGenerator {
           role: genkit.Role.model,
           content: [
             genkit.TextPart(
-              text: parts
-                  .whereType<TextPart>()
-                  .map((p) => p.text)
-                  .join(),
+              text: parts.whereType<TextPart>().map((p) => p.text).join(),
             ),
           ],
         ),
