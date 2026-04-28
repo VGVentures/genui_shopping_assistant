@@ -128,7 +128,7 @@ void main() async {
     flows: [searchProductsFlow, quickRecommendationFlow],
     port: 3400,
     cors: {
-      'origin': Platform.environment['ALLOWED_ORIGIN'] ?? 'http://localhost:*',
+      'origin': Platform.environment['ALLOWED_ORIGIN'] ?? '*',
     },
   );
 
