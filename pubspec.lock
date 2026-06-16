@@ -9,6 +9,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.66"
+  anthropic_sdk_dart:
+    dependency: transitive
+    description:
+      name: anthropic_sdk_dart
+      sha256: b0e91039942930341b24e3871d5b9481b6d31528b711eb752f413f4d1f5980eb
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.5.0"
   args:
     dependency: transitive
     description:
@@ -73,6 +81,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.7"
+  csslib:
+    dependency: transitive
+    description:
+      name: csslib
+      sha256: "09bad715f418841f976c77db72d5398dc1253c21fb9c0c7f0b0b985860b2d58e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.2"
+  dartantic_ai:
+    dependency: "direct main"
+    description:
+      name: dartantic_ai
+      sha256: "32a3cb9f47d37d8d0da9dee2c9bfa7d1ad421b5c10b53428751b526fa6ece28f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.4.1"
+  dartantic_interface:
+    dependency: transitive
+    description:
+      name: dartantic_interface
+      sha256: b21a1867da49335b1004cae5b97abeff75e3421ec7c3fee144bcc5e6f463dc63
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.0"
   decimal:
     dependency: transitive
     description:
@@ -232,6 +264,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.0"
+  genui_dartantic:
+    dependency: "direct main"
+    description:
+      name: genui_dartantic
+      sha256: "6c671966c0ab73e78fb490628f33f2cf0bab189d6533a6e3665d75ed80fa5e62"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.1"
   genui_firebase_ai:
     dependency: "direct main"
     description:
@@ -240,6 +280,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.0"
+  googleai_dart:
+    dependency: transitive
+    description:
+      name: googleai_dart
+      sha256: b7283c2d0d0aefb8feb735b1a8bcaa5cd1eaeb18fef86d500e9644564586d762
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.1.0"
+  html:
+    dependency: transitive
+    description:
+      name: html
+      sha256: "6d1264f2dffa1b1101c25a91dff0dc2daee4c18e87cd8538729773c073dbf602"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.15.6"
   http:
     dependency: transitive
     description:
@@ -264,6 +320,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.20.2"
+  json_schema:
+    dependency: transitive
+    description:
+      name: json_schema
+      sha256: f37d9c3fdfe8c9aae55fdfd5af815d24ce63c3a0f6a2c1f0982c30f43643fa1a
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.2.2"
   json_schema_builder:
     dependency: "direct main"
     description:
@@ -324,10 +388,10 @@ packages:
     dependency: transitive
     description:
       name: matcher
-      sha256: "12956d0ad8390bbcc63ca2e1469c0619946ccb52809807067a7020d57e647aa6"
+      sha256: dc0b7dc7651697ea4ff3e69ef44b0407ea32c487a39fff6a4004fa585e901861
       url: "https://pub.dev"
     source: hosted
-    version: "0.12.18"
+    version: "0.12.19"
   material_color_utilities:
     dependency: transitive
     description:
@@ -336,6 +400,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.13.0"
+  mcp_dart:
+    dependency: transitive
+    description:
+      name: mcp_dart
+      sha256: a3aca340d3600e8b36ac6f1bdbec2f2b16ed6d574901d7cab329a547d6f436bc
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.0"
   meta:
     dependency: transitive
     description:
@@ -352,6 +424,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.0"
+  mistralai_dart:
+    dependency: transitive
+    description:
+      name: mistralai_dart
+      sha256: ee6a06c6cac399fc3f4a707f379acd3afea79775033fe4b605da6a8c2dfd3768
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.3.0"
+  ollama_dart:
+    dependency: transitive
+    description:
+      name: ollama_dart
+      sha256: d301154465e07810bd0c6ebb4ebc24f1e0f51372a299ae6b28433ac3bea91031
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.1"
+  openai_dart:
+    dependency: transitive
+    description:
+      name: openai_dart
+      sha256: "4731f94ea9a09cd9e92333debcfb87efda2764718e506538206df9f540e9ab60"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.0"
   path:
     dependency: transitive
     description:
@@ -368,6 +464,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
+  pool:
+    dependency: transitive
+    description:
+      name: pool
+      sha256: "978783255c543aa3586a1b3c21f6e9d720eb315376a915872c61ef8b5c20177d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.5.2"
+  quiver:
+    dependency: transitive
+    description:
+      name: quiver
+      sha256: ea0b925899e64ecdfbf9c7becb60d5b50e706ade44a85b2363be2a22d88117d2
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.2.2"
   rational:
     dependency: transitive
     description:
@@ -376,6 +488,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.3"
+  rfc_6901:
+    dependency: transitive
+    description:
+      name: rfc_6901
+      sha256: "6a43b1858dca2febaf93e15639aa6b0c49ccdfd7647775f15a499f872b018154"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.1"
+  rxdart:
+    dependency: transitive
+    description:
+      name: rxdart
+      sha256: "5c3004a4a8dbb94bd4bf5412a4def4acdaa12e12f269737a5751369e12d1a962"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.28.0"
+  shelf:
+    dependency: transitive
+    description:
+      name: shelf
+      sha256: e7dd780a7ffb623c57850b33f43309312fc863fb6aa3d276a754bb299839ef12
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.2"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -389,6 +525,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.10.2"
+  sse:
+    dependency: transitive
+    description:
+      name: sse
+      sha256: a9a804dbde8bfd369da3b4aa241d44d63a6486a97388c54ec166073d88c52302
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.2.0"
+  sse_channel:
+    dependency: transitive
+    description:
+      name: sse_channel
+      sha256: ad85fda353fae12533fd762dbd3ff275e710f216644e39459bf11a138124acad
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.2"
   stack_trace:
     dependency: transitive
     description:
@@ -425,10 +577,10 @@ packages:
     dependency: transitive
     description:
       name: test_api
-      sha256: "93167629bfc610f71560ab9312acdda4959de4df6fac7492c89ff0d3886f6636"
+      sha256: "8161c84903fd860b26bfdefb7963b3f0b68fee7adea0f59ef805ecca346f0c7a"
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.9"
+    version: "0.7.10"
   typed_data:
     dependency: transitive
     description:
@@ -437,6 +589,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.0"
+  uri:
+    dependency: transitive
+    description:
+      name: uri
+      sha256: "889eea21e953187c6099802b7b4cf5219ba8f3518f604a1033064d45b1b8268a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   uuid:
     dependency: transitive
     description:
@@ -486,5 +646,5 @@ packages:
     source: hosted
     version: "3.0.3"
 sdks:
-  dart: ">=3.9.2 <4.0.0"
+  dart: ">=3.11.0 <4.0.0"
   flutter: ">=3.35.7"

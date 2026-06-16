@@ -7,11 +7,13 @@ environment:
   sdk: '>=3.4.0 <4.0.0'
 
 dependencies:
+  dartantic_ai: ^3.4.0
   firebase_ai: ^3.8.0
   firebase_core: ^4.4.0
   flutter:
     sdk: flutter
   genui: ^0.7.0
+  genui_dartantic: ^0.7.1
   genui_firebase_ai: ^0.7.0
   json_schema_builder: ^0.1.3
   logging: ^1.3.0

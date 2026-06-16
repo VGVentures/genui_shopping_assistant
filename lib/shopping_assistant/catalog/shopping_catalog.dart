@@ -22,5 +22,9 @@ final shoppingCatalog = Catalog(
     productCarouselItem,
     priceRangeFilterItem,
   ],
-  catalogId: 'shopping_catalog',
+  // genui_dartantic 0.7.1 does not pass catalogId to BeginRenderingTool, so
+  // the surface lookup falls back to genui's standardCatalogId constant.
+  // Using that same value here ensures both the Claude and Gemini paths resolve
+  // to this catalog correctly.
+  catalogId: 'a2ui.org:standard_catalog_0_8_0',
 );

@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:genui/genui.dart';
+import 'package:genui_shopping_assistant/shopping_assistant/ai/claude_ai_transport.dart';
 import 'package:genui_shopping_assistant/shopping_assistant/ai/firebase_ai_transport.dart';
 import 'package:genui_shopping_assistant/shopping_assistant/catalog/shopping_catalog.dart';
 import 'package:genui_shopping_assistant/shopping_assistant/view/widgets/chat_input_bar.dart';
@@ -41,9 +43,9 @@ class ShoppingAssistantPage extends StatefulWidget {
 }
 
 class _ShoppingAssistantPageState extends State<ShoppingAssistantPage> {
-  late final ContentGenerator _contentGenerator;
-  late final A2uiMessageProcessor _messageProcessor;
-  late final GenUiConversation _conversation;
+  late ContentGenerator _contentGenerator;
+  late A2uiMessageProcessor _messageProcessor;
+  late GenUiConversation _conversation;
 
   final List<_MessageEntry> _messages = [];
   final ScrollController _scrollController = ScrollController();
@@ -51,15 +53,14 @@ class _ShoppingAssistantPageState extends State<ShoppingAssistantPage> {
   @override
   void initState() {
     super.initState();
+    _initConversation();
+  }
 
-    // 1. Build the Firebase AI content generator (Gemini streaming).
-    _contentGenerator = buildFirebaseAiContentGenerator();
-
-    // 2. Create the A2uiMessageProcessor — the runtime engine that manages
-    //    every GenUI surface (AI-composed widget tree) in this session.
+  void _initConversation() {
+    _contentGenerator = kIsWeb
+        ? buildFirebaseAiContentGenerator()
+        : buildClaudeContentGenerator();
     _messageProcessor = A2uiMessageProcessor(catalogs: [shoppingCatalog]);
-
-    // 3. Create the GenUiConversation — orchestrates turns, events, and state.
     _conversation = GenUiConversation(
       contentGenerator: _contentGenerator,
       a2uiMessageProcessor: _messageProcessor,
